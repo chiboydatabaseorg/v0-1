@@ -78,6 +78,18 @@ export default function OrdersPage() {
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${st.color}`}>{st.label}</span>
                   </div>
 
+                  <div className="mt-4 grid grid-cols-4 gap-1">
+                    {["pending_payment", "payment_verified", "shipped", "delivered"].map((step) => {
+                      const currentIndex = ["pending_payment", "payment_submitted", "payment_verified", "approved", "shipped", "delivered"].indexOf(order.status)
+                      const stepIndex = ["pending_payment", "payment_verified", "shipped", "delivered"].indexOf(step)
+                      const complete = currentIndex >= stepIndex * 2
+                      return <div key={step} className={`h-1.5 rounded-full ${complete ? "bg-primary" : "bg-muted"}`} aria-label={`${statusLabels[step]?.label} ${complete ? "complete" : "upcoming"}`} />
+                    })}
+                  </div>
+                  <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                    <span>Placed</span><span>Paid</span><span>Shipped</span><span>Delivered</span>
+                  </div>
+
                   <div className="mt-3 flex flex-wrap gap-2">
                     {order.items.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-2 rounded-md bg-muted px-2 py-1">

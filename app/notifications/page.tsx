@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { db, collection, query, getDocs, orderBy, updateDoc, doc } from "@/lib/firebase"
+import { db, collection, query, onSnapshot, orderBy, updateDoc, doc } from "@/lib/firebase"
 import type { Notification } from "@/lib/types"
 import { WHATSAPP_LINK } from "@/lib/types"
 import { SiteHeader } from "@/components/site-header"
@@ -19,20 +19,16 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (authLoading) return
     if (!user) { router.push("/login"); return }
-    const fetch = async () => {
-      try {
-        const q = query(collection(db, "users", user.uid, "notifications"), orderBy("createdAt", "desc"))
-        const snap = await getDocs(q)
-        const notifs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Notification)
-        setNotifications(notifs)
-
-        // Mark all as read
-        const unread = snap.docs.filter((d) => !d.data().read)
-        await Promise.all(unread.map((d) => updateDoc(doc(db, "users", user.uid, "notifications", d.id), { read: true })))
-      } catch {}
+    const q = query(collection(db, "users", user.uid, "notifications"), orderBy("createdAt", "desc"))
+    const unsubscribe = onSnapshot(q, async (snap) => {
+      const notifs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Notification)
+      setNotifications(notifs)
       setLoading(false)
-    }
-    fetch()
+
+      const unread = snap.docs.filter((d) => !d.data().read)
+      await Promise.all(unread.map((d) => updateDoc(doc(db, "users", user.uid, "notifications", d.id), { read: true })))
+    }, () => setLoading(false))
+    return unsubscribe
   }, [user, authLoading, router])
 
   if (authLoading || loading) {

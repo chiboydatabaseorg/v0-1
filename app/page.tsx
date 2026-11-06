@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { db, collection, onSnapshot, orderBy, query } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import type { Product } from "@/lib/types"
@@ -30,8 +30,24 @@ export default function HomePage() {
     return unsubscribe
   }, [])
 
+  const [search, setSearch] = useState("")
+  const [category, setCategory] = useState("all")
+  const [sort, setSort] = useState("newest")
+
   const activeProducts = products.filter((product) => product.isActive !== false)
-  const displayProducts = user ? activeProducts : activeProducts.slice(0, 8)
+  const categories = Array.from(new Set(activeProducts.map((product) => product.category).filter(Boolean)))
+  const filteredProducts = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    return activeProducts
+      .filter((product) => category === "all" || product.category === category)
+      .filter((product) => !normalizedSearch || `${product.name} ${product.description ?? ""}`.toLowerCase().includes(normalizedSearch))
+      .sort((a, b) => {
+        if (sort === "price-low") return (a.price ?? 0) - (b.price ?? 0)
+        if (sort === "price-high") return (b.price ?? 0) - (a.price ?? 0)
+        return 0
+      })
+  }, [activeProducts, category, search, sort])
+  const displayProducts = user ? filteredProducts : filteredProducts.slice(0, 8)
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -111,6 +127,28 @@ export default function HomePage() {
                   Login to see all
                 </a>
               )}
+            </div>
+
+            <div className="mb-6 grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-[1fr_auto_auto]">
+              <label className="sr-only" htmlFor="product-search">Search products</label>
+              <input
+                id="product-search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search products"
+                className="h-11 rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none ring-primary transition focus:ring-2"
+              />
+              <label className="sr-only" htmlFor="product-category">Filter by category</label>
+              <select id="product-category" value={category} onChange={(event) => setCategory(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none">
+                <option value="all">All categories</option>
+                {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+              <label className="sr-only" htmlFor="product-sort">Sort products</label>
+              <select id="product-sort" value={sort} onChange={(event) => setSort(event.target.value)} className="h-11 rounded-xl border border-border bg-background px-4 text-sm text-foreground outline-none">
+                <option value="newest">Newest first</option>
+                <option value="price-low">Price: low to high</option>
+                <option value="price-high">Price: high to low</option>
+              </select>
             </div>
 
             {loading ? (
