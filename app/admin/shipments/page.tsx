@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { db, collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from "@/lib/firebase"
+import { arrayUnion } from "firebase/firestore"
 import type { Order } from "@/lib/types"
 import { WHATSAPP_LINK } from "@/lib/types"
 import { Loader2, Eye, Truck, X as XIcon, ChevronDown, ChevronUp } from "lucide-react"
@@ -33,7 +34,11 @@ export default function AdminShipmentsPage() {
     if (!confirm("Mark this order as shipped?")) return
     setProcessing(order.id)
     try {
-      await updateDoc(doc(db, "orders", order.id), { status: "shipped" })
+      await updateDoc(doc(db, "orders", order.id), {
+        status: "shipped",
+        updatedAt: serverTimestamp(),
+        statusHistory: arrayUnion({ status: "shipped", changedAt: new Date().toISOString(), changedBy: "admin" }),
+      })
 
       await addDoc(collection(db, "users", order.userId, "notifications"), {
         userId: order.userId,
@@ -78,7 +83,11 @@ export default function AdminShipmentsPage() {
     if (!confirm("Mark this order as delivered?")) return
     setProcessing(order.id)
     try {
-      await updateDoc(doc(db, "orders", order.id), { status: "delivered" })
+      await updateDoc(doc(db, "orders", order.id), {
+        status: "delivered",
+        updatedAt: serverTimestamp(),
+        statusHistory: arrayUnion({ status: "delivered", changedAt: new Date().toISOString(), changedBy: "admin" }),
+      })
 
       await addDoc(collection(db, "users", order.userId, "notifications"), {
         userId: order.userId,
