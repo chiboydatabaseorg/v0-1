@@ -5,7 +5,7 @@ import React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { auth, signInWithEmailAndPassword, sendPasswordResetEmail } from "@/lib/firebase"
+import { auth, db, doc, setDoc, getDoc, signInWithEmailAndPassword, sendPasswordResetEmail, signInWithPopup, GoogleAuthProvider } from "@/lib/firebase"
 import { toast } from "sonner"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { SiteHeader } from "@/components/site-header"
@@ -41,6 +41,33 @@ export default function LoginPage() {
         toast.error("Incorrect password")
       } else {
         toast.error(err.message || "Login failed")
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setLoading(true)
+    try {
+      const result = await signInWithPopup(auth, new GoogleAuthProvider())
+      const profileRef = doc(db, "users", result.user.uid)
+      const profile = await getDoc(profileRef)
+      if (!profile.exists()) {
+        await setDoc(profileRef, {
+          uid: result.user.uid,
+          email: result.user.email || "",
+          displayName: result.user.displayName || "",
+          photoURL: result.user.photoURL || "",
+          role: "customer",
+          createdAt: new Date(),
+        })
+      }
+      toast.success("Login successful!")
+      router.push("/")
+    } catch (err: any) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        toast.error(err.message || "Google login failed")
       }
     } finally {
       setLoading(false)
@@ -139,6 +166,21 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
+
+            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              <span>OR</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-blue-600">G</span>
+              Continue with Google
+            </button>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               {"Don't have an account? "}

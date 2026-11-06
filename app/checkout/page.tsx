@@ -193,12 +193,24 @@ export default function CheckoutPage() {
         }
 
         const orderRef = await addDoc(collection(db, "orders"), orderData)
+        const paymentResponse = await fetch("/api/paystack/initialize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: user.email,
+            amount: amountToPay,
+            orderId: orderRef.id,
+            callbackUrl: `${window.location.origin}/payment/${orderRef.id}`,
+          }),
+        })
+        const paymentData = await paymentResponse.json()
+        if (!paymentResponse.ok || !paymentData.authorizationUrl) throw new Error(paymentData.error || "Unable to start Paystack payment")
 
         // Clear cart
         const cartSnap = await getDocs(collection(db, "users", user.uid, "cart"))
         await Promise.all(cartSnap.docs.map((d) => deleteDoc(d.ref)))
 
-        router.push(`/payment/${orderRef.id}`)
+        window.location.assign(paymentData.authorizationUrl)
       }
     } catch (err) {
       toast.error("Failed to process order")
