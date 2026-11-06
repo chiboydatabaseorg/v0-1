@@ -11,7 +11,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { Loader2, ArrowLeft, ArrowRight, Edit3 } from "lucide-react"
 import { toast } from "sonner"
 
-type PaymentMethod = "cashback" | "direct" | "mixed"
+type PaymentMethod = "cashback" | "manual" | "paystack" | "mixed"
 type Step = "details" | "confirm" | "payment"
 
 interface CartDoc extends CartItem {
@@ -35,7 +35,7 @@ export default function CheckoutPage() {
     address: "",
     landmarks: "",
   })
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("direct")
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paystack")
 
   useEffect(() => {
     if (authLoading) return
@@ -163,7 +163,8 @@ export default function CheckoutPage() {
         toast.success("Order placed successfully!")
         router.push("/profile")
       } else {
-        // Direct or mixed payment - redirect to payment page
+        // Manual bank transfer or Paystack payment
+
         const orderData: Omit<Order, "id"> = {
           userId: user.uid,
           userEmail: user.email,
@@ -172,7 +173,7 @@ export default function CheckoutPage() {
           totalAmount: total,
           amountPaid: amountToPay,
           cashbackUsed,
-          paymentMethod: paymentMethod === "mixed" ? "mixed" : "direct",
+          paymentMethod: paymentMethod === "mixed" ? "mixed" : paymentMethod,
           status: "pending_payment",
           shipmentDetails: shipment,
           createdAt: serverTimestamp(),
@@ -193,6 +194,13 @@ export default function CheckoutPage() {
         }
 
         const orderRef = await addDoc(collection(db, "orders"), orderData)
+        if (paymentMethod === "manual") {
+          const cartSnap = await getDocs(collection(db, "users", user.uid, "cart"))
+          await Promise.all(cartSnap.docs.map((d) => deleteDoc(d.ref)))
+          router.push(`/payment/${orderRef.id}`)
+          return
+        }
+
         const paymentResponse = await fetch("/api/paystack/initialize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -351,11 +359,18 @@ export default function CheckoutPage() {
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-bold text-foreground">Payment Method</h2>
               <div className="flex flex-col gap-3">
-                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-accent">
-                  <input type="radio" name="payment" value="direct" checked={paymentMethod === "direct"} onChange={() => setPaymentMethod("direct")} className="h-4 w-4 accent-primary" />
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-primary/40 bg-primary/5 p-3 transition-colors hover:bg-accent">
+                  <input type="radio" name="payment" value="paystack" checked={paymentMethod === "paystack"} onChange={() => setPaymentMethod("paystack")} className="h-4 w-4 accent-primary" />
                   <div>
-                    <p className="text-sm font-medium text-foreground">Direct Payment Only</p>
-                    <p className="text-xs text-muted-foreground">Pay the full amount via bank transfer</p>
+                    <p className="text-sm font-medium text-foreground">Pay securely with Paystack</p>
+                    <p className="text-xs text-muted-foreground">Card, bank transfer, USSD, or mobile money</p>
+                  </div>
+                </label>
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-accent">
+                  <input type="radio" name="payment" value="manual" checked={paymentMethod === "manual"} onChange={() => setPaymentMethod("manual")} className="h-4 w-4 accent-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Manual bank transfer</p>
+                    <p className="text-xs text-muted-foreground">Transfer directly and upload your payment proof</p>
                   </div>
                 </label>
                 <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-accent">

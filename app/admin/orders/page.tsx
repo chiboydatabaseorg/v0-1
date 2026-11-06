@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { db, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, getDoc } from "@/lib/firebase"
+import { db, collection, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, getDoc } from "@/lib/firebase"
 import type { Order } from "@/lib/types"
 import { WHATSAPP_LINK } from "@/lib/types"
 import { Loader2, Eye, Check, X, CreditCard, ChevronDown, ChevronUp } from "lucide-react"
@@ -17,30 +17,17 @@ export default function AdminOrdersPage() {
   const [processing, setProcessing] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const snap = await getDocs(collection(db, "orders"))
-        const ords = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order)
-        ords.sort((a, b) => {
-          const priority: Record<string, number> = {
-            payment_submitted: 0,
-            payment_verified: 1,
-            pending_payment: 2,
-            approved: 3,
-            shipped: 4,
-            delivered: 5,
-            rejected: 6,
-          }
-          return (priority[a.status] ?? 99) - (priority[b.status] ?? 99)
-        })
-        setOrders(ords)
-      } catch {
-        toast.error("Failed to load orders")
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchOrders()
+    const unsubscribe = onSnapshot(collection(db, "orders"), (snap) => {
+      const ords = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order)
+      const priority: Record<string, number> = { payment_submitted: 0, payment_verified: 1, pending_payment: 2, approved: 3, shipped: 4, delivered: 5, rejected: 6 }
+      ords.sort((a, b) => (priority[a.status] ?? 99) - (priority[b.status] ?? 99))
+      setOrders(ords)
+      setLoading(false)
+    }, () => {
+      toast.error("Failed to load orders")
+      setLoading(false)
+    })
+    return unsubscribe
   }, [])
 
   const handleApproveOrder = async (order: Order) => {

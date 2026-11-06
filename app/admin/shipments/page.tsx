@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { db, collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "@/lib/firebase"
+import { db, collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from "@/lib/firebase"
 import type { Order } from "@/lib/types"
 import { WHATSAPP_LINK } from "@/lib/types"
 import { Loader2, Eye, Truck, X as XIcon, ChevronDown, ChevronUp } from "lucide-react"
@@ -14,25 +14,19 @@ export default function AdminShipmentsPage() {
   const [processing, setProcessing] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const snap = await getDocs(collection(db, "orders"))
-        const ords = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }) as Order)
-          .filter((o) => o.status === "approved" || o.status === "shipped" || o.status === "delivered")
-        // Sort: awaiting shipment (approved) first, then shipped, then delivered
-        ords.sort((a, b) => {
-          const priority: Record<string, number> = { approved: 0, shipped: 1, delivered: 2 }
-          return (priority[a.status] ?? 99) - (priority[b.status] ?? 99)
-        })
-        setOrders(ords)
-      } catch {
-        toast.error("Failed to load shipments")
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchOrders()
+    const unsubscribe = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), (snap) => {
+      const ords = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as Order)
+        .filter((o) => o.status === "approved" || o.status === "shipped" || o.status === "delivered")
+      const priority: Record<string, number> = { approved: 0, shipped: 1, delivered: 2 }
+      ords.sort((a, b) => (priority[a.status] ?? 99) - (priority[b.status] ?? 99))
+      setOrders(ords)
+      setLoading(false)
+    }, () => {
+      toast.error("Failed to load shipments")
+      setLoading(false)
+    })
+    return unsubscribe
   }, [])
 
   const handleShip = async (order: Order) => {

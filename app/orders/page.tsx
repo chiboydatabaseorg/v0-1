@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { db, collection, query, where, getDocs, orderBy } from "@/lib/firebase"
+import { db, collection, query, where, onSnapshot, orderBy } from "@/lib/firebase"
 import type { Order } from "@/lib/types"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -29,15 +29,12 @@ export default function OrdersPage() {
   useEffect(() => {
     if (authLoading) return
     if (!user) { router.push("/login"); return }
-    const fetch = async () => {
-      try {
-        const q = query(collection(db, "orders"), where("userId", "==", user.uid), orderBy("createdAt", "desc"))
-        const snap = await getDocs(q)
-        setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order))
-      } catch {}
+    const q = query(collection(db, "orders"), where("userId", "==", user.uid), orderBy("createdAt", "desc"))
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Order))
       setLoading(false)
-    }
-    fetch()
+    }, () => setLoading(false))
+    return unsubscribe
   }, [user, authLoading, router])
 
   if (authLoading || loading) {

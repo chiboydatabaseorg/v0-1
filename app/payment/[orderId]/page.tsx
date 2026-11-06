@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { db, doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from "@/lib/firebase"
 import type { Order } from "@/lib/types"
@@ -15,6 +15,7 @@ import { toast } from "sonner"
 export default function PaymentPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
@@ -36,6 +37,25 @@ export default function PaymentPage() {
     }
     fetchOrder()
   }, [user, authLoading, params.orderId, router])
+
+  useEffect(() => {
+    const reference = searchParams.get("reference")
+    if (!reference || !order || !user) return
+
+    const verifyPayment = async () => {
+      setPhase("verifying")
+      try {
+        const response = await fetch(`/api/paystack/verify?reference=${encodeURIComponent(reference)}&orderId=${encodeURIComponent(order.id)}`)
+        if (!response.ok) throw new Error("Payment verification failed")
+        toast.success("Payment confirmed successfully")
+        router.replace("/orders")
+      } catch {
+        setPhase("bank")
+        toast.error("We could not verify this payment yet. Please contact support if you were charged.")
+      }
+    }
+    verifyPayment()
+  }, [order, user, searchParams, router])
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
