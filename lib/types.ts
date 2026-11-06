@@ -15,6 +15,7 @@ export interface UserProfile {
 export interface Product {
   id: string
   name: string
+  category?: string
   description: string
   fullDetails: string
   images: string[]

@@ -12,6 +12,7 @@ import { toast } from "sonner"
 
 interface ProductForm {
   name: string
+  category: string
   description: string
   fullDetails: string
   images: string[]
@@ -24,6 +25,7 @@ interface ProductForm {
 
 const emptyForm: ProductForm = {
   name: "",
+  category: "",
   description: "",
   fullDetails: "",
   images: [],
@@ -73,6 +75,7 @@ export default function AdminProductsPage() {
   const openEditModal = (product: Product) => {
     setForm({
       name: product.name,
+      category: product.category || "",
       description: product.description,
       fullDetails: product.fullDetails,
       images: [...product.images],
@@ -150,6 +153,7 @@ export default function AdminProductsPage() {
     try {
       const productData = {
         name: form.name,
+        category: form.category.trim() || "Uncategorized",
         description: form.description,
         fullDetails: form.fullDetails,
         images: form.images,
@@ -295,6 +299,20 @@ export default function AdminProductsPage() {
                     className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
                     placeholder="Enter product name"
                   />
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground" htmlFor="product-category">Category</label>
+                  <input
+                    id="product-category"
+                    type="text"
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
+                    placeholder="e.g. Electronics, Fashion, Home"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">Products with the same category appear together in the storefront filter.</p>
                 </div>
 
                 {/* Description */}

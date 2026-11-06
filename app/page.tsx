@@ -42,8 +42,8 @@ export default function HomePage() {
       .filter((product) => category === "all" || product.category === category)
       .filter((product) => !normalizedSearch || `${product.name} ${product.description ?? ""}`.toLowerCase().includes(normalizedSearch))
       .sort((a, b) => {
-        if (sort === "price-low") return (a.price ?? 0) - (b.price ?? 0)
-        if (sort === "price-high") return (b.price ?? 0) - (a.price ?? 0)
+        if (sort === "price-low") return (a.hasDiscount ? a.discountPrice : a.normalPrice) - (b.hasDiscount ? b.discountPrice : b.normalPrice)
+        if (sort === "price-high") return (b.hasDiscount ? b.discountPrice : b.normalPrice) - (a.hasDiscount ? a.discountPrice : a.normalPrice)
         return 0
       })
   }, [activeProducts, category, search, sort])
