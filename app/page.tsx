@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { db, collection, getDocs, orderBy, query } from "@/lib/firebase"
+import { db, collection, onSnapshot, orderBy, query } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
 import type { Product } from "@/lib/types"
 import { SiteHeader } from "@/components/site-header"
@@ -17,19 +17,17 @@ export default function HomePage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const q = query(collection(db, "products"), orderBy("createdAt", "desc"))
-        const snap = await getDocs(q)
-        const prods = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product)
-        setProducts(prods)
-      } catch {
-        // Products collection may not exist yet
-      } finally {
+    const q = query(collection(db, "products"), orderBy("createdAt", "desc"))
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product))
         setLoading(false)
-      }
-    }
-    fetchProducts()
+      },
+      () => setLoading(false),
+    )
+
+    return unsubscribe
   }, [])
 
   const displayProducts = user ? products : products.slice(0, 8)

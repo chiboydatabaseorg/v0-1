@@ -3,7 +3,7 @@
 import React from "react"
 
 import { useEffect, useState } from "react"
-import { db, collection, getDocs, doc, deleteDoc, addDoc, updateDoc, serverTimestamp } from "@/lib/firebase"
+import { db, collection, onSnapshot, doc, deleteDoc, addDoc, updateDoc, serverTimestamp } from "@/lib/firebase"
 import { uploadToImgBB } from "@/lib/imgbb"
 import type { Product } from "@/lib/types"
 import { NIGERIA_STATES } from "@/lib/types"
@@ -48,19 +48,20 @@ export default function AdminProductsPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchProducts()
-  }, [])
+    const unsubscribe = onSnapshot(
+      collection(db, "products"),
+      (snap) => {
+        setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product))
+        setLoading(false)
+      },
+      () => {
+        toast.error("Failed to load products")
+        setLoading(false)
+      },
+    )
 
-  const fetchProducts = async () => {
-    try {
-      const snap = await getDocs(collection(db, "products"))
-      setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Product))
-    } catch {
-      toast.error("Failed to load products")
-    } finally {
-      setLoading(false)
-    }
-  }
+    return unsubscribe
+  }, [])
 
   const openAddModal = () => {
     setForm(emptyForm)
