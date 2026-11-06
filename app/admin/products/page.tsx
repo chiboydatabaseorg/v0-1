@@ -48,6 +48,16 @@ export default function AdminProductsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState<"form" | "preview">("form")
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "categories"),
+      (snap) => setCategories(snap.docs.map((item) => ({ id: item.id, name: String(item.data().name || "") })).filter((item) => item.name)),
+      () => toast.error("Failed to load categories"),
+    )
+    return unsubscribe
+  }, [])
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -303,16 +313,21 @@ export default function AdminProductsPage() {
 
                 {/* Category */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground" htmlFor="product-category">Category</label>
-                  <input
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <label className="block text-sm font-medium text-foreground" htmlFor="product-category">Category</label>
+                    <a href="/admin/categories" className="text-xs font-semibold text-primary hover:underline">Manage categories</a>
+                  </div>
+                  <select
                     id="product-category"
-                    type="text"
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
                     className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
-                    placeholder="e.g. Electronics, Fashion, Home"
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">Products with the same category appear together in the storefront filter.</p>
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
+                    {form.category && !categories.some((category) => category.name === form.category) && <option value={form.category}>{form.category} (legacy)</option>}
+                  </select>
+                  <p className="mt-1 text-xs text-muted-foreground">Create categories first, then select one for each product.</p>
                 </div>
 
                 {/* Description */}
