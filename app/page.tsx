@@ -30,7 +30,8 @@ export default function HomePage() {
     return unsubscribe
   }, [])
 
-  const displayProducts = user ? products : products.slice(0, 8)
+  const activeProducts = products.filter((product) => product.isActive !== false)
+  const displayProducts = user ? activeProducts : activeProducts.slice(0, 8)
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -105,7 +106,7 @@ export default function HomePage() {
               <h2 className="text-2xl font-bold text-foreground">
                 {user ? "All Products" : "Featured Products"}
               </h2>
-              {!user && products.length > 8 && (
+              {!user && activeProducts.length > 8 && (
                 <a href="/login" className="text-sm font-medium text-primary hover:underline">
                   Login to see all
                 </a>
@@ -135,7 +136,7 @@ export default function HomePage() {
               </div>
             )}
 
-            {!user && products.length > 0 && (
+            {!user && activeProducts.length > 0 && (
               <div className="mt-8 text-center">
                 <p className="mb-3 text-sm text-muted-foreground">
                   Login to browse all products and start shopping

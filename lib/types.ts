@@ -24,6 +24,12 @@ export interface Product {
   externalLinks: string[]
   limitedToStates: string[]
   likes: number
+  stockQuantity?: number
+  lowStockThreshold?: number
+  sku?: string
+  isActive?: boolean
+  isFeatured?: boolean
+  media?: { type: "image" | "video"; url: string; thumbnailUrl?: string }[]
   createdAt: any
 }
 
@@ -46,7 +52,7 @@ export interface Order {
   amountPaid: number
   cashbackUsed: number
   paymentMethod: "cashback" | "direct" | "mixed"
-  status: "pending_payment" | "payment_submitted" | "payment_verified" | "approved" | "rejected" | "shipped" | "delivered"
+  status: "pending_payment" | "payment_submitted" | "payment_verified" | "approved" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded"
   shipmentDetails: ShipmentDetails
   paymentProof?: PaymentProof
   rejectionReason?: string
