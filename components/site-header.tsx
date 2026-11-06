@@ -87,7 +87,7 @@ export function SiteHeader() {
                 )}
               </Link>
               <Link
-                href="/profile"
+                href="/dashboard"
                 className="flex items-center rounded-md px-2.5 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
               >
                 <User className="h-5 w-5" />
