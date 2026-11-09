@@ -205,44 +205,44 @@ export default function CheckoutPage() {
           createdAt: serverTimestamp(),
         }
 
-        if (cashbackUsed > 0) {
-          await updateDoc(doc(db, "users", user.uid), {
-            cashbackBalance: cashbackBalance - cashbackUsed,
-          })
-
-          await addDoc(collection(db, "transactions"), {
-            userId: user.uid,
-            type: "cashback_debit",
-            amount: cashbackUsed,
-            description: `Partial cashback used for order`,
-            createdAt: serverTimestamp(),
-          })
-        }
-
-        const orderRef = await addDoc(collection(db, "orders"), orderData)
         if (paymentMethod === "manual") {
+          if (cashbackUsed > 0) {
+            await updateDoc(doc(db, "users", user.uid), { cashbackBalance: cashbackBalance - cashbackUsed })
+            await addDoc(collection(db, "transactions"), {
+              userId: user.uid,
+              type: "cashback_debit",
+              amount: cashbackUsed,
+              description: `Partial cashback used for order`,
+              createdAt: serverTimestamp(),
+            })
+          }
+          const orderRef = await addDoc(collection(db, "orders"), orderData)
+
           const cartSnap = await getDocs(collection(db, "users", user.uid, "cart"))
           await Promise.all(cartSnap.docs.map((d) => deleteDoc(d.ref)))
           router.push(`/payment/${orderRef.id}`)
           return
         }
 
+        const intentRef = await addDoc(collection(db, "payment_intents"), {
+          ...orderData,
+          userId: user.uid,
+          paymentMethod: paymentMethod === "mixed" ? "mixed" : "direct",
+          status: "awaiting_payment",
+          createdAt: serverTimestamp(),
+        })
         const paymentResponse = await fetch("/api/paystack/initialize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: user.email,
             amount: amountToPay,
-            orderId: orderRef.id,
-            callbackUrl: `${window.location.origin}/payment/${orderRef.id}`,
+            orderId: intentRef.id,
+            callbackUrl: `${window.location.origin}/payment/${intentRef.id}`,
           }),
         })
         const paymentData = await paymentResponse.json()
         if (!paymentResponse.ok || !paymentData.authorizationUrl) throw new Error(paymentData.error || "Unable to start Paystack payment")
-
-        // Clear cart
-        const cartSnap = await getDocs(collection(db, "users", user.uid, "cart"))
-        await Promise.all(cartSnap.docs.map((d) => deleteDoc(d.ref)))
 
         window.location.assign(paymentData.authorizationUrl)
       }

@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context"
 import type { Product, CartItem } from "@/lib/types"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
-import { Heart, ShoppingCart, ArrowLeft, ExternalLink, Loader2, Check } from "lucide-react"
+import { Heart, ShoppingCart, ArrowLeft, ExternalLink, Loader2, Check, Star } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 import { arrayUnion, arrayRemove } from "firebase/firestore"
@@ -23,6 +23,10 @@ export default function ProductDetailPage() {
   const [isLiked, setIsLiked] = useState(false)
   const [addingToCart, setAddingToCart] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [reviews, setReviews] = useState<{ id: string; userName: string; rating: number; comment: string; createdAt?: any }[]>([])
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState("")
+  const [submittingReview, setSubmittingReview] = useState(false)
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -46,6 +50,28 @@ export default function ProductDetailPage() {
       setIsLiked(user.likedProducts?.includes(product.id) || false)
     }
   }, [user, product])
+
+  useEffect(() => {
+    if (!params.id) return
+    getDocs(query(collection(db, "reviews"), where("productId", "==", params.id as string)))
+      .then((snapshot) => setReviews(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as typeof reviews[number])))
+      .catch(() => undefined)
+  }, [params.id])
+
+  const submitReview = async () => {
+    if (!user) { toast.error("Please login to review this product"); router.push("/login"); return }
+    if (!user.emailVerified) { toast.error("Please verify your email before reviewing"); return }
+    if (!product || rating < 1 || rating > 5 || !comment.trim()) { toast.error("Choose a rating and write a review"); return }
+    setSubmittingReview(true)
+    try {
+      const existing = await getDocs(query(collection(db, "reviews"), where("productId", "==", product.id), where("userId", "==", user.uid)))
+      if (!existing.empty) { toast.error("You have already reviewed this product"); return }
+      const review = { productId: product.id, userId: user.uid, userName: user.fullName || user.email, rating, comment: comment.trim(), createdAt: serverTimestamp() }
+      const created = await addDoc(collection(db, "reviews"), review)
+      setReviews((current) => [...current, { id: created.id, ...review }])
+      setRating(0); setComment(""); toast.success("Review submitted")
+    } catch { toast.error("Could not submit review") } finally { setSubmittingReview(false) }
+  }
 
   const handleLike = async () => {
     if (!user) {
@@ -314,6 +340,20 @@ export default function ProductDetailPage() {
             )}
           </div>
         </div>
+
+        <section className="mt-10 border-t border-border pt-8" aria-labelledby="reviews-heading">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div><h2 id="reviews-heading" className="text-xl font-bold text-foreground">Reviews & ratings</h2><p className="mt-1 text-sm text-muted-foreground">{reviews.length ? `${(reviews.reduce((sum, item) => sum + item.rating, 0) / reviews.length).toFixed(1)} out of 5 from ${reviews.length} review${reviews.length === 1 ? "" : "s"}` : "Be the first to review this product."}</p></div>
+            {reviews.length > 0 && <div className="flex items-center gap-1" aria-label="Average rating">{[1, 2, 3, 4, 5].map((value) => <Star key={value} className={`h-5 w-5 ${value <= Math.round(reviews.reduce((sum, item) => sum + item.rating, 0) / reviews.length) ? "fill-amber-400 text-amber-400" : "text-muted"}`} />)}</div>}
+          </div>
+          <div className="mt-6 rounded-xl border border-border bg-card p-4">
+            <p className="text-sm font-semibold text-foreground">Share your experience</p>
+            <div className="mt-3 flex gap-1" aria-label="Choose a rating">{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" onClick={() => setRating(value)} aria-label={`${value} star${value === 1 ? "" : "s"}`}><Star className={`h-6 w-6 ${value <= rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} /></button>)}</div>
+            <textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} placeholder="What did you think?" className="mt-3 min-h-24 w-full rounded-lg border border-input bg-background p-3 text-sm text-foreground outline-none focus:border-primary" />
+            <button type="button" onClick={submitReview} disabled={submittingReview} className="mt-3 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{submittingReview ? "Submitting..." : "Submit review"}</button>
+          </div>
+          <div className="mt-5 space-y-3">{reviews.map((review) => <article key={review.id} className="rounded-xl border border-border p-4"><div className="flex items-center justify-between gap-3"><p className="font-semibold text-foreground">{review.userName}</p><div className="flex">{[1, 2, 3, 4, 5].map((value) => <Star key={value} className={`h-4 w-4 ${value <= review.rating ? "fill-amber-400 text-amber-400" : "text-muted"}`} />)}</div></div><p className="mt-2 text-sm leading-6 text-muted-foreground">{review.comment}</p></article>)}</div>
+        </section>
       </main>
       <SiteFooter />
     </div>

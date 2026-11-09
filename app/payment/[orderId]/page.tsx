@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { db, doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from "@/lib/firebase"
+import { db, doc, getDoc, updateDoc, addDoc, collection, getDocs, deleteDoc, serverTimestamp } from "@/lib/firebase"
 import type { Order } from "@/lib/types"
 import { BANK_DETAILS } from "@/lib/types"
 import { uploadToImgBB } from "@/lib/imgbb"
@@ -19,7 +19,7 @@ export default function PaymentPage() {
   const { user, loading: authLoading } = useAuth()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
-  const [phase, setPhase] = useState<"bank" | "verifying" | "proof">("bank")
+  const [phase, setPhase] = useState<"bank" | "verifying" | "proof">(() => searchParams.get("reference") ? "verifying" : "bank")
   const [senderName, setSenderName] = useState("")
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -40,14 +40,19 @@ export default function PaymentPage() {
 
   useEffect(() => {
     const reference = searchParams.get("reference")
-    if (!reference || !order || !user) return
+    if (!reference || !user) return
 
     const verifyPayment = async () => {
       setPhase("verifying")
       try {
         const response = await fetch(`/api/paystack/verify?reference=${encodeURIComponent(reference)}&orderId=${encodeURIComponent(order.id)}`)
-        if (!response.ok) throw new Error("Payment verification failed")
-        toast.success("Payment confirmed successfully")
+        if (!response.ok) {
+          const failure = await response.json().catch(() => ({}))
+          throw new Error(failure.error || "Payment verification failed")
+        }
+        const cartSnap = await getDocs(collection(db, "users", user.uid, "cart"))
+        await Promise.all(cartSnap.docs.map((item) => deleteDoc(item.ref)))
+        toast.success("Payment confirmed successfully. Your order has been placed.")
         router.replace("/orders")
       } catch {
         setPhase("bank")
@@ -135,7 +140,7 @@ export default function PaymentPage() {
     )
   }
 
-  if (!order) {
+  if (!order && !searchParams.get("reference")) {
     return (
       <div className="flex min-h-screen flex-col">
         <SiteHeader />
