@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
 import { Toaster } from "sonner"
+import { PwaRegister } from "@/components/pwa-register"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
@@ -24,6 +25,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <Toaster position="top-right" richColors />
+          <PwaRegister />
         </AuthProvider>
       </body>
     </html>
