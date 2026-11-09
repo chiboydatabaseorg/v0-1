@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Loader2, Users, Package, CreditCard, Truck, ShoppingBag, LayoutDashboard, Settings } from "lucide-react"
+import { Loader2, Users, Package, CreditCard, Truck, ShoppingBag, LayoutDashboard, Settings, Tag } from "lucide-react"
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/shipments", label: "Shipments", icon: Truck },
   { href: "/admin/products", label: "Products", icon: ShoppingBag },
+  { href: "/admin/promos", label: "Vouchers", icon: Tag },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ]
 

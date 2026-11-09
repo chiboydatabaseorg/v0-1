@@ -25,6 +25,9 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [step, setStep] = useState<Step>("details")
   const [processing, setProcessing] = useState(false)
+  const [promoInput, setPromoInput] = useState("")
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null)
+  const [promoLoading, setPromoLoading] = useState(false)
 
   const [shipment, setShipment] = useState<ShipmentDetails>({
     email: "",
@@ -49,8 +52,27 @@ export default function CheckoutPage() {
     fetchCart()
   }, [user, authLoading, router])
 
-  const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const baseTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const promoDiscount = appliedPromo ? Math.floor(baseTotal * appliedPromo.discountPercent / 100) : 0
+  const total = baseTotal - promoDiscount
   const cashbackBalance = user?.cashbackBalance || 0
+
+  const applyPromo = async () => {
+    const code = promoInput.trim().toUpperCase()
+    if (!code) return
+    setPromoLoading(true)
+    try {
+      const response = await fetch("/api/promos/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      })
+      const match = await response.json() as { code?: string; discountPercent?: number; error?: string }
+      if (!response.ok || !match.code || !match.discountPercent) { toast.error(match.error || "That promo code is invalid or expired"); return }
+      setAppliedPromo({ code: match.code, discountPercent: match.discountPercent })
+      toast.success(`${match.discountPercent}% discount applied`)
+    } catch { toast.error("Could not validate promo code") } finally { setPromoLoading(false) }
+  }
 
   const calculatePayment = () => {
     if (paymentMethod === "cashback") {
@@ -129,6 +151,8 @@ export default function CheckoutPage() {
           totalAmount: total,
           amountPaid: 0,
           cashbackUsed: total,
+          promoCode: appliedPromo?.code,
+          promoDiscount,
           paymentMethod: "cashback",
           status: "payment_verified",
           shipmentDetails: shipment,
@@ -173,6 +197,8 @@ export default function CheckoutPage() {
           totalAmount: total,
           amountPaid: amountToPay,
           cashbackUsed,
+          promoCode: appliedPromo?.code,
+          promoDiscount,
           paymentMethod: paymentMethod === "mixed" ? "mixed" : paymentMethod,
           status: "pending_payment",
           shipmentDetails: shipment,
@@ -354,6 +380,15 @@ export default function CheckoutPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-bold text-foreground">Voucher or promo code</h2>
+              <div className="flex gap-2">
+                <input value={promoInput} onChange={(e) => setPromoInput(e.target.value)} placeholder="Enter code" className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2.5 text-sm uppercase text-foreground" disabled={Boolean(appliedPromo)} />
+                <button type="button" onClick={() => appliedPromo ? setAppliedPromo(null) : applyPromo()} disabled={promoLoading || (!promoInput.trim() && !appliedPromo)} className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-50">{appliedPromo ? "Remove" : promoLoading ? "Checking..." : "Apply"}</button>
+              </div>
+              {appliedPromo && <p className="mt-2 text-sm text-emerald-600">{appliedPromo.code} applied: {appliedPromo.discountPercent}% off.</p>}
             </div>
 
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">

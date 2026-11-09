@@ -52,6 +52,8 @@ export interface Order {
   totalAmount: number
   amountPaid: number
   cashbackUsed: number
+  promoCode?: string
+  promoDiscount?: number
   paymentMethod: "cashback" | "direct" | "mixed"
   status: "pending_payment" | "payment_submitted" | "payment_verified" | "approved" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded"
   shipmentDetails: ShipmentDetails
