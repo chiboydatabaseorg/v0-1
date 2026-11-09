@@ -15,6 +15,7 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [adminCategories, setAdminCategories] = useState<string[]>([])
 
   useEffect(() => {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"))
@@ -30,12 +31,23 @@ export default function HomePage() {
     return unsubscribe
   }, [])
 
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "categories"),
+      (snap) => setAdminCategories(snap.docs.map((doc) => String(doc.data().name || "")).filter(Boolean).sort()),
+    )
+    return unsubscribe
+  }, [])
+
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("all")
   const [sort, setSort] = useState("newest")
 
   const activeProducts = products.filter((product) => product.isActive !== false)
-  const categories = Array.from(new Set(activeProducts.map((product) => product.category).filter(Boolean)))
+  const categories = Array.from(new Set([
+    ...adminCategories,
+    ...activeProducts.map((product) => product.category).filter((value): value is string => Boolean(value)),
+  ]))
   const filteredProducts = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
     return activeProducts
