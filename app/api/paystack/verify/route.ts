@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { db, doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from "@/lib/firebase"
+import { db, doc, getDoc, updateDoc, setDoc, serverTimestamp } from "@/lib/firebase"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       paidAt: serverTimestamp(),
     })
 
-    await addDoc(collection(db, "transactions"), {
+    await setDoc(doc(db, "transactions", `paystack_${reference}`), {
       userId: order.userId,
       type: "purchase",
       amount: Number(order.amountPaid || 0),
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       orderId,
       reference,
       createdAt: serverTimestamp(),
-    })
+    }, { merge: true })
 
     return NextResponse.json({ verified: true })
   } catch {

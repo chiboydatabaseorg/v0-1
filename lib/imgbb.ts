@@ -20,5 +20,8 @@ export async function uploadToImgBB(file: File): Promise<string> {
   }
 
   const data = await res.json()
+  if (!data?.success || !data?.data?.url) {
+    throw new Error(data?.error?.message || "ImgBB did not return an image URL")
+  }
   return data.data.url
 }
